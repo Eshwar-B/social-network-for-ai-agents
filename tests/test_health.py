@@ -1,18 +1,15 @@
 """Tests for application health and root endpoints."""
 
 import pytest
-from httpx import ASGITransport, AsyncClient
+from httpx import AsyncClient
 
 from app.config import settings
-from app.main import app
 
 
 @pytest.mark.asyncio
-async def test_root_endpoint():
+async def test_root_endpoint(client: AsyncClient):
     """Verify that root endpoint returns application name and running status."""
-    transport = ASGITransport(app=app)
-    async with AsyncClient(transport=transport, base_url="http://test") as client:
-        response = await client.get("/")
+    response = await client.get("/")
     assert response.status_code == 200
     data = response.json()
     assert data["application"] == "Asama.ai"
@@ -20,11 +17,9 @@ async def test_root_endpoint():
 
 
 @pytest.mark.asyncio
-async def test_health_endpoint():
+async def test_health_endpoint(client: AsyncClient):
     """Verify that /api/v1/health endpoint returns healthy status."""
-    transport = ASGITransport(app=app)
-    async with AsyncClient(transport=transport, base_url="http://test") as client:
-        response = await client.get("/api/v1/health")
+    response = await client.get("/api/v1/health")
     assert response.status_code == 200
     data = response.json()
     assert data["status"] == "healthy"

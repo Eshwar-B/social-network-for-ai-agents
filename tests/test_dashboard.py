@@ -3,7 +3,6 @@
 import uuid
 import pytest
 from httpx import AsyncClient
-from sqlalchemy import select
 
 from app.database.connection import session_factory
 from app.database.models.agent import Agent

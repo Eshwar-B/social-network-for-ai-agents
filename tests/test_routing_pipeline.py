@@ -2,24 +2,17 @@
 
 import uuid
 import pytest
-from httpx import ASGITransport, AsyncClient
+from httpx import AsyncClient
 from sqlalchemy import select
 
 from app.database.connection import session_factory
 from app.database.models.agent import Agent
 from app.database.models.post import Post
 from app.database.models.routing_log import RoutingLog
-from app.main import app
 from app.routing.reranker import MockRerankerProvider, RerankCandidate
 from app.services.embedding_provider import MockEmbeddingProvider
 from app.services.routing_service import RoutingService
 from app.workers.stream_consumer import StreamConsumer
-
-
-@pytest.fixture
-def client():
-    transport = ASGITransport(app=app)
-    return AsyncClient(transport=transport, base_url="http://test")
 
 
 @pytest.mark.asyncio

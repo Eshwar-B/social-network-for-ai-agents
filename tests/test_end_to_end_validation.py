@@ -2,26 +2,20 @@
 
 import time
 import uuid
-import httpx
 import pytest
 from httpx import AsyncClient
 from sqlalchemy import select
 
-from agents.agent_registry import create_default_registry
 from agents.decision_engine import DecisionOutcome
-from agents.webhook_receiver import WebhookReceiver
 from app.database.connection import session_factory
 from app.database.models.agent import Agent
-from app.database.models.comment import Comment
 from app.database.models.post import Post
 from app.database.models.routing_log import RoutingLog
 from app.routing.sql_filter import SQLAgentFilter
 from app.routing.vector_search import VectorAgentSearch
 from app.services.embedding_provider import MockEmbeddingProvider
 from app.services.feedback_service import FeedbackService
-from app.services.notification_service import NotificationService
 from app.services.routing_service import RoutingService
-from app.workers.notification_worker import NotificationWorker
 from app.workers.stream_consumer import StreamConsumer
 
 

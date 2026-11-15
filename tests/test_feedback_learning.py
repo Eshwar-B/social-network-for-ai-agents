@@ -3,7 +3,6 @@
 import math
 import uuid
 import pytest
-from sqlalchemy import select
 
 from app.database.connection import session_factory
 from app.database.models.agent import Agent

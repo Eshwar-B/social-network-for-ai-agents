@@ -1,14 +1,12 @@
 """Integration tests for Phase 10: Autonomous AI Agent Implementation & Decision Engine."""
 
 import json
-import time
 import pytest
 
 from agents.agent_registry import (
     AmazonAgent,
     BajajAutoAgent,
     PhonePeAgent,
-    SwiggyAgent,
     create_default_registry,
 )
 from agents.decision_engine import DecisionEngine, DecisionOutcome

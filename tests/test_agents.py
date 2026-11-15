@@ -2,17 +2,7 @@
 
 import uuid
 import pytest
-from httpx import ASGITransport, AsyncClient
-
-from app.database.connection import session_factory
-from app.database.models.agent import Agent
-from app.main import app
-
-
-@pytest.fixture
-def client():
-    transport = ASGITransport(app=app)
-    return AsyncClient(transport=transport, base_url="http://test")
+from httpx import AsyncClient
 
 
 @pytest.mark.asyncio

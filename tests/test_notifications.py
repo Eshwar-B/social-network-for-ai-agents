@@ -1,11 +1,9 @@
 """Integration tests for Phase 9: Signed Webhook Notification Delivery, HMAC, Retry, and Circuit Breaker."""
 
-import json
 import time
 import uuid
 import httpx
 import pytest
-from sqlalchemy import select
 
 from app.database.connection import session_factory
 from app.database.models.agent import Agent

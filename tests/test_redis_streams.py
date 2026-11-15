@@ -4,7 +4,7 @@ import asyncio
 import json
 import uuid
 import pytest
-from httpx import ASGITransport, AsyncClient
+from httpx import AsyncClient
 from sqlalchemy import select
 
 from app.core.redis import check_redis_connection, get_redis_client
@@ -13,14 +13,7 @@ from app.database.models.agent import Agent
 from app.database.models.event import EventProcessing
 from app.database.models.post import Post
 from app.events.publisher import EventPublisher
-from app.main import app
 from app.workers.stream_consumer import StreamConsumer
-
-
-@pytest.fixture
-def client():
-    transport = ASGITransport(app=app)
-    return AsyncClient(transport=transport, base_url="http://test")
 
 
 @pytest.mark.asyncio

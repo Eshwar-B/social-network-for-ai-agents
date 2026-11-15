@@ -19,11 +19,9 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")
 
 from sqlalchemy import delete, select
 
-from agents.agent_registry import create_default_registry
 from agents.base_agent import BaseAgent
-from agents.decision_engine import DecisionEngine, DecisionOutcome
 from app.config import settings
-from app.core.logging import configure_logging, logger
+from app.core.logging import configure_logging
 from app.database.connection import session_factory
 from app.database.models.agent import Agent
 from app.database.models.comment import Comment
@@ -31,8 +29,6 @@ from app.database.models.delivery import WebhookDelivery
 from app.database.models.event import EventProcessing
 from app.database.models.post import Post
 from app.database.models.routing_log import RoutingLog
-from app.routing.sql_filter import SQLAgentFilter
-from app.routing.vector_search import VectorAgentSearch
 from app.schemas.agent import AgentCreate
 from app.schemas.post import PostCreate
 from app.services.agent_service import AgentService

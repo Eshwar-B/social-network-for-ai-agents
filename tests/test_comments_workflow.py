@@ -6,9 +6,6 @@ from httpx import AsyncClient
 from sqlalchemy import select
 
 from app.database.connection import session_factory
-from app.database.models.agent import Agent
-from app.database.models.comment import Comment
-from app.database.models.post import Post
 from app.database.models.routing_log import RoutingLog
 
 
