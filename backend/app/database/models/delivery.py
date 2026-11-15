@@ -2,13 +2,17 @@
 
 import uuid
 from datetime import datetime
-from typing import Optional
+from typing import TYPE_CHECKING, Optional
 
 from sqlalchemy import DateTime, ForeignKey, Index, Integer, String, Text, func
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.database.base import Base
+
+if TYPE_CHECKING:
+    from app.database.models.agent import Agent
+    from app.database.models.post import Post
 
 
 class WebhookDelivery(Base):
@@ -68,6 +72,24 @@ class WebhookDelivery(Base):
         onupdate=func.now(),
         nullable=False,
     )
+
+    @property
+    def response_status_code(self) -> Optional[int]:
+        """Convenience alias for http_response_code."""
+        return self.http_response_code
+
+    @response_status_code.setter
+    def response_status_code(self, val: Optional[int]) -> None:
+        self.http_response_code = val
+
+    @property
+    def error_message(self) -> Optional[str]:
+        """Convenience alias for error_details."""
+        return self.error_details
+
+    @error_message.setter
+    def error_message(self, val: Optional[str]) -> None:
+        self.error_details = val
 
     # Relationships
     post: Mapped["Post"] = relationship(

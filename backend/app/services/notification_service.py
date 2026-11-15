@@ -219,11 +219,11 @@ class NotificationService:
                 try:
                     resp = await client.post(webhook_url, content=payload_bytes, headers=headers)
                     status_code = resp.status_code
-                    delivery.response_status_code = status_code
+                    delivery.http_response_code = status_code
                     if 200 <= status_code < 300:
                         success = True
                         delivery.status = "SUCCESS"
-                        delivery.error_message = None
+                        delivery.error_details = None
                         self.breaker.record_success(endpoint_key)
                         logger.info(
                             "Delivered notification for post %s to agent %s (%s) on attempt %d",
@@ -246,7 +246,7 @@ class NotificationService:
 
             if not success:
                 delivery.status = "FAILED"
-                delivery.error_message = last_error
+                delivery.error_details = last_error
                 logger.warning(
                     "Failed delivery to agent %s (%s) after %d attempts: %s",
                     target_agent.company_name,
@@ -260,8 +260,8 @@ class NotificationService:
                 {
                     "status": delivery.status,
                     "attempt_number": delivery.attempt_number,
-                    "response_status_code": delivery.response_status_code,
-                    "error_message": delivery.error_message,
+                    "http_response_code": delivery.http_response_code,
+                    "error_details": delivery.error_details,
                 },
             )
             return delivery

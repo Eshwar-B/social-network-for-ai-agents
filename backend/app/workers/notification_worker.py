@@ -73,9 +73,9 @@ class NotificationWorker:
             delivery = await self.service.deliver_webhook(
                 target_agent=agent,
                 post=post,
-                vector_score=log.vector_score,
-                rerank_score=log.rerank_score,
-                final_score=log.final_score,
+                vector_score=float(log.vector_score or 0.0),
+                rerank_score=float(log.rerank_score or 0.0),
+                final_score=float(log.final_score or 0.0),
                 db_session=db,
                 custom_client=custom_client,
             )

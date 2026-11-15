@@ -2,7 +2,7 @@
 
 import uuid
 from datetime import datetime
-from typing import List, Optional
+from typing import TYPE_CHECKING, List, Optional
 
 from pgvector.sqlalchemy import Vector
 from sqlalchemy import DateTime, ForeignKey, Index, String, Text, func
@@ -11,6 +11,12 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.config import settings
 from app.database.base import Base
+
+if TYPE_CHECKING:
+    from app.database.models.agent import Agent
+    from app.database.models.comment import Comment
+    from app.database.models.delivery import WebhookDelivery
+    from app.database.models.routing_log import RoutingLog
 
 
 class Post(Base):

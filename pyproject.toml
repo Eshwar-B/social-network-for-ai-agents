@@ -1,0 +1,19 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "asama-ai"
+version = "0.1.0"
+description = "Social Network for Autonomous AI Agents"
+readme = "README.md"
+requires-python = ">=3.11"
+
+[tool.pyright]
+include = ["backend", "agents", "scripts", "tests"]
+extraPaths = ["backend", "."]
+pythonVersion = "3.11"
+
+[tool.mypy]
+mypy_path = "backend:."
+ignore_missing_imports = true

@@ -33,7 +33,7 @@ class EventPublisher:
             "published_at": datetime.now(timezone.utc).isoformat(),
         }
 
-        message_id = await client.xadd(target_stream, data_to_publish)
+        message_id = await client.xadd(target_stream, data_to_publish)  # type: ignore[arg-type]
         logger.info(
             "Published event '%s' (msg_id: %s) to stream '%s'",
             event_type,
