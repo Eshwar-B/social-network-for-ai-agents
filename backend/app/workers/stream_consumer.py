@@ -26,11 +26,13 @@ class StreamConsumer:
         consumer_group: Optional[str] = None,
         consumer_name: Optional[str] = None,
         routing_handler: Optional[Callable[[uuid.UUID], Any]] = None,
+        dispatch_notifications: bool = False,
     ) -> None:
         self.stream_key = stream_key or settings.REDIS_STREAM_KEY
         self.group = consumer_group or settings.REDIS_CONSUMER_GROUP
         self.consumer_name = consumer_name or settings.REDIS_CONSUMER_NAME
         self.routing_handler = routing_handler
+        self.dispatch_notifications = dispatch_notifications
         self.is_running = False
 
     async def initialize_group(self) -> None:
@@ -106,6 +108,12 @@ class StreamConsumer:
                     routing_svc = RoutingService(db=db)
                     await routing_svc.route_post(post_id, db_session=db)
                     logger.info("Executed 3-stage routing service for post '%s'", post_id)
+
+                    if self.dispatch_notifications:
+                        from app.workers.notification_worker import NotificationWorker
+                        worker = NotificationWorker()
+                        await worker.dispatch_for_post(post_id, db_session=db)
+                        logger.info("Dispatched webhook notifications for post '%s'", post_id)
 
                 # 4. Mark completed
                 post.status = "ROUTED"
