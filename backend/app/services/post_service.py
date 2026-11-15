@@ -11,6 +11,7 @@ from app.database.models.agent import Agent
 from app.database.models.comment import Comment
 from app.database.models.event import EventProcessing
 from app.database.models.post import Post
+from app.events.publisher import EventPublisher
 from app.repositories.post_repository import PostRepository
 from app.schemas.post import PostCreate
 from app.services.embedding_service import EmbeddingService
@@ -23,6 +24,7 @@ class PostService:
         self.db = db
         self.repo = PostRepository(db)
         self.embedding_service = EmbeddingService(db=db)
+        self.publisher = EventPublisher()
 
     async def create_post(
         self,
@@ -51,7 +53,7 @@ class PostService:
         )
         created_post = self.repo.create(post)
 
-        # 2. Prepare transactional outbox event for Redis Stream ingestion
+        # 2. Prepare transactional outbox event
         event_id = f"evt_{uuid.uuid4().hex}"
         event = EventProcessing(
             event_id=event_id,
@@ -67,8 +69,18 @@ class PostService:
         )
         self.repo.create_event(event)
 
+        # 3. Publish event to Redis Stream
+        try:
+            await self.publisher.publish_post_published(
+                event_id=event_id,
+                post_id=created_post.id,
+                author_agent_id=author.id,
+            )
+        except Exception as exc:
+            logger.warning("Failed to publish event to Redis Stream: %s (outbox record preserved)", exc)
+
         logger.info(
-            "Created post '%s' (ID: %s) by company '%s'; outbox event '%s' prepared",
+            "Created post '%s' (ID: %s) by company '%s'; outbox event '%s' published",
             created_post.title,
             created_post.id,
             author.company_name,

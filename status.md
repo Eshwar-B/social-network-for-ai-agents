@@ -8,7 +8,7 @@ Problem: Problem 1
 
 Development Status: IN_PROGRESS
 
-Current Phase: Phase 5 – Redis Streams and Asynchronous Event Ingestion
+Current Phase: Phase 6 – Multi-Stage Routing Engine: Stage A (SQL Filtering)
 
 Last Updated: 2026-11-15
 
@@ -25,8 +25,8 @@ Git Repository: Local repository initialized (branch: main)
 | 2 | Agent Registration | COMPLETED |
 | 3 | Embedding Generation | COMPLETED |
 | 4 | Post Management | COMPLETED |
-| 5 | Redis Event Processing | IN_PROGRESS |
-| 6 | SQL Filtering | NOT_STARTED |
+| 5 | Redis Event Processing | COMPLETED |
+| 6 | SQL Filtering | IN_PROGRESS |
 | 7 | Vector Search | NOT_STARTED |
 | 8 | Reranking | NOT_STARTED |
 | 9 | Webhook Delivery | NOT_STARTED |
@@ -43,57 +43,64 @@ Git Repository: Local repository initialized (branch: main)
 
 ## Current Phase
 
-Phase 5 – Redis Streams and Asynchronous Event Ingestion
+Phase 6 – Multi-Stage Routing Engine: Stage A (SQL Eligibility Filtering)
 
 Status: IN_PROGRESS
 
-### Completed Tasks (Phase 4)
+### Completed Tasks (Phase 5)
 
-- Implemented Pydantic schemas in `backend/app/schemas/post.py` (`PostCreate`, `PostResponse`, `PostListResponse`, `CommentResponse`, `CommentListResponse`).
-- Implemented `PostRepository` in `backend/app/repositories/post_repository.py`.
-- Implemented `PostService` in `backend/app/services/post_service.py`:
-  - Verified authenticated publisher identity and active status.
-  - Generated post dense vector embedding from `Title + "\n\n" + Content` using `EmbeddingService`.
-  - Stored post in PostgreSQL with `posts.post_embedding` vector (1536 dimensions).
-  - Implemented transactional outbox pattern: persisted event record in `event_processing` table with payload `{"event_id", "event_type": "post.published", "post_id", "author_agent_id"}`.
-- Implemented Post API router in `backend/app/api/posts.py`:
-  - `POST /api/v1/posts` (publishes announcement, returns 201)
-  - `GET /api/v1/posts` (paginated list with author and status filtering)
-  - `GET /api/v1/posts/{post_id}` (detailed post)
-  - `GET /api/v1/posts/{post_id}/comments` (comments listing)
-- Included `posts` router in main API router (`backend/app/api/router.py`).
-- Implemented and verified complete test suite in `tests/test_posts.py` (5 tests passed).
+- Configured asynchronous Redis client and connection pool in `backend/app/core/redis.py` with multi-event-loop support.
+- Implemented `EventPublisher` in `backend/app/events/publisher.py` for publishing `post.published` events to Redis Stream `asama:stream:posts` via `XADD`.
+- Implemented `StreamConsumer` in `backend/app/workers/stream_consumer.py`:
+  - Consumer group initialization via `XGROUP CREATE ... mkstream=True`.
+  - Authoritative PostgreSQL lookup for published posts.
+  - Idempotency validation via `event_processing` table (preventing duplicate event execution).
+  - Message acknowledgement via `XACK`.
+  - Pending message recovery (PEL claim and processing on restart).
+- Integrated stream publishing into `PostService.create_post` without blocking HTTP response.
+- Implemented and verified complete test suite in `tests/test_redis_streams.py` (5 tests passed).
 
-### Pending Tasks (Phase 5)
+### Pending Tasks (Phase 6)
 
-- Configure async Redis client connection in `backend/app/core/redis.py`.
-- Implement Redis Stream event publisher in `backend/app/events/publisher.py`.
-- Implement Redis Stream consumer worker with consumer groups in `backend/app/workers/stream_consumer.py`.
-- Implement idempotency and pending event recovery (handling restarts and PEL claims).
-- Hook PostService to publish `post.published` events to Redis Stream (`asama:stream:posts`).
-- Ensure API returns immediately without waiting for routing or background workers.
-- Test Redis connectivity, event publication, consumer group processing, worker restart recovery, and idempotency.
+- Implement SQL eligibility filter in `backend/app/routing/sql_filter.py`:
+  - Exclude author/publishing agent.
+  - Exclude inactive agents (`is_active == False`).
+  - Exclude agents without valid embeddings (`embedding_status != 'COMPLETED'` or `interest_embedding IS NULL`).
+  - Exclude explicitly blocked agents via `agent_blocklists`.
+  - Exclude explicitly blocked industries via `agent_blocklists.blocked_industry`.
+- Record and return filtering statistics:
+  - Total agents evaluated.
+  - Eligible agents count.
+  - Publisher excluded count.
+  - Inactive agents excluded count.
+  - Missing embedding excluded count.
+  - Blocked agents excluded count.
+  - Blocked industries excluded count.
+- Dynamic filtering without hardcoding any company relationships.
+- Write and run unit and integration tests for SQL filtering.
 
-### Files Created (Phase 4)
+### Files Created (Phase 5)
 
-- `backend/app/schemas/post.py`
-- `backend/app/repositories/post_repository.py`
-- `backend/app/services/post_service.py`
-- `backend/app/api/posts.py`
-- `tests/test_posts.py`
+- `backend/app/core/redis.py`
+- `backend/app/events/__init__.py`
+- `backend/app/events/publisher.py`
+- `backend/app/workers/__init__.py`
+- `backend/app/workers/stream_consumer.py`
+- `tests/test_redis_streams.py`
 
 ### Tests
 
+- `tests/test_redis_streams.py` (5 tests) - PASSED
 - `tests/test_posts.py` (5 tests) - PASSED
 - `tests/test_embeddings.py` (6 tests) - PASSED
 - `tests/test_agents.py` (6 tests) - PASSED
 - `tests/test_database.py` (4 tests) - PASSED
 - `tests/test_health.py` (3 tests) - PASSED
-- Total: 24 passed in 4.12s.
+- Total: 29 passed in 4.32s.
 
 ### Git Commit
 
-- Pending Phase 4 commit: `feat: implement post creation and management APIs`
+- Pending Phase 5 commit: `feat: implement Redis Streams event processing`
 
 ### Git Push
 
@@ -105,7 +112,7 @@ Status: IN_PROGRESS
 
 ### Next Action
 
-- Commit Phase 4, then proceed with Phase 5: Redis Streams and Asynchronous Event Ingestion.
+- Commit Phase 5, then proceed with Phase 6: SQL Eligibility Filtering.
 
 ---
 
@@ -127,7 +134,7 @@ Status: IN_PROGRESS
 - **Implemented Features:** PostgreSQL 16 + pgvector setup, SQLAlchemy 2 ORM models, HNSW cosine indexes on vector columns (1536 dim), Alembic migrations, database health check and vector query validation.
 - **Files Created:** Database connection, models, migrations, tests.
 - **Database Changes:** Tables `agents`, `posts`, `routing_logs`, `comments`, `webhook_deliveries`, `event_processing`, `agent_blocklists` created with HNSW indexes.
-- **APIs Implemented:** None (database layer).
+- **APIs Implemented:** None.
 - **Test Results:** 7 tests passed (100% pass rate).
 - **Git Commit Hash:** `d531246`
 - **GitHub Push Confirmation:** Local branch `main`.
@@ -162,6 +169,17 @@ Status: IN_PROGRESS
 - **Database Changes:** None.
 - **APIs Implemented:** `POST /api/v1/posts`, `GET /api/v1/posts`, `GET /api/v1/posts/{post_id}`, `GET /api/v1/posts/{post_id}/comments`.
 - **Test Results:** 24 tests passed (100% pass rate).
+- **Git Commit Hash:** `60469db`
+- **GitHub Push Confirmation:** Local branch `main`.
+- **Known Limitations:** None.
+
+### Phase 5 – Redis Streams and Asynchronous Event Ingestion
+- **Completion Date:** 2026-11-15
+- **Implemented Features:** Redis stream event publisher, consumer group worker with authoritative DB lookups, idempotency check, message acknowledgement, pending message (PEL) recovery, decoupled non-blocking post publication API.
+- **Files Created:** `redis.py`, `publisher.py`, `stream_consumer.py`, `tests/test_redis_streams.py`.
+- **Database Changes:** None.
+- **APIs Implemented:** None (asynchronous streaming layer).
+- **Test Results:** 29 tests passed (100% pass rate).
 - **Git Commit Hash:** Pending.
 - **GitHub Push Confirmation:** Local branch `main`.
-- **Known Limitations:** Event publishing to Redis Streams scheduled for Phase 5.
+- **Known Limitations:** None.
