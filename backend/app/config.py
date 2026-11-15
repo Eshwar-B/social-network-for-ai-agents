@@ -21,7 +21,7 @@ class Settings(BaseSettings):
     )
 
     # Redis Streams
-    REDIS_URL: str = "redis://localhost:6379/0"
+    REDIS_URL: str = "redis://localhost:6380/0"
     REDIS_STREAM_KEY: str = "asama:stream:posts"
     REDIS_CONSUMER_GROUP: str = "asama:group:routing"
     REDIS_CONSUMER_NAME: str = "routing_worker_1"
