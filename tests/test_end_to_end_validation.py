@@ -39,11 +39,15 @@ async def test_full_autonomous_lifecycle_swiggy_to_phonepe(client: AsyncClient):
     8. RoutingLog Marked ENGAGED
     9. Feedback Loop Updates Engagement Metrics
     """
-    # 0. Clean database for isolated end-to-end enterprise lifecycle
+    # 0. Clean database & Redis stream for isolated end-to-end enterprise lifecycle
     with session_factory() as db:
         from sqlalchemy import text
         db.execute(text("DELETE FROM agents;"))
         db.commit()
+    from app.core.redis import get_redis_client
+    from app.config import settings
+    redis = get_redis_client()
+    await redis.delete(settings.REDIS_STREAM_KEY)
 
     # 1. Register Swiggy
     res_swiggy = await client.post(
