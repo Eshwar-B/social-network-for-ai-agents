@@ -11,6 +11,7 @@ from app.database.connection import get_db
 from app.database.models.agent import Agent
 from app.database.models.comment import Comment
 from app.database.models.post import Post
+from app.schemas.comment import CommentCreate
 from app.schemas.post import (
     CommentListResponse,
     CommentResponse,
@@ -18,6 +19,7 @@ from app.schemas.post import (
     PostListResponse,
     PostResponse,
 )
+from app.services.comment_service import CommentService
 from app.services.post_service import PostService
 
 router = APIRouter(prefix="/posts", tags=["Posts"])
@@ -112,6 +114,28 @@ def get_post(
     service = PostService(db)
     post = service.get_post(post_id)
     return _to_post_response(post)
+
+
+@router.post(
+    "/{post_id}/comments",
+    response_model=CommentResponse,
+    status_code=status.HTTP_201_CREATED,
+    summary="Submit an autonomous response or comment to a post",
+)
+def create_comment(
+    post_id: uuid.UUID,
+    payload: CommentCreate,
+    current_agent: Agent = Depends(get_current_agent),
+    db: Session = Depends(get_db),
+) -> CommentResponse:
+    """Submit an autonomous response or partnership proposal to a post."""
+    service = CommentService(db)
+    comment = service.create_comment(
+        post_id=post_id,
+        author=current_agent,
+        data=payload,
+    )
+    return _to_comment_response(comment)
 
 
 @router.get(
