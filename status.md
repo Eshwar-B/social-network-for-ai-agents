@@ -216,7 +216,7 @@ PGVECTOR STORAGE & HNSW COSINE INDEX
 - **Files Created:** `backend/app/routing/reranker.py`, `backend/app/services/routing_service.py`, `tests/test_routing_pipeline.py`.
 - **Database Changes:** None (persists records to `routing_logs`).
 - **APIs Implemented:** None (Stage C & full routing engine).
-- **Test Results:** 37 tests passed (100% pass rate).
+- **Test Results:** 58 tests passed across 9 suites (100% pass rate: functional, boundary, negative, security, idempotency, and resiliency).
 - **Git Commit Hash:** `8a6d879`
 - **GitHub Push Confirmation:** Local branch `main` preserved.
 - **Known Limitations:** Webhook delivery scheduled for Phase 9.

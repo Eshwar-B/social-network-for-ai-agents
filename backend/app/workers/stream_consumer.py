@@ -140,8 +140,15 @@ class StreamConsumer:
                     # If empty fields, message might have been claimed/acked
                     if not fields:
                         continue
-                    event_type = fields.get("event_type", "unknown")
-                    payload = json.loads(fields.get("payload", "{}"))
+                    try:
+                        event_type = fields.get("event_type", "unknown")
+                        payload = json.loads(fields.get("payload", "{}"))
+                    except Exception as parse_err:
+                        logger.error("Corrupted pending message %s: %s; acknowledging poison pill", msg_id, parse_err)
+                        await client.xack(self.stream_key, self.group, msg_id)
+                        processed_count += 1
+                        continue
+
                     success = await self.process_event(msg_id, event_type, payload)
                     if success:
                         await client.xack(self.stream_key, self.group, msg_id)
@@ -164,8 +171,15 @@ class StreamConsumer:
             )
             for stream, messages in new_messages:
                 for msg_id, fields in messages:
-                    event_type = fields.get("event_type", "unknown")
-                    payload = json.loads(fields.get("payload", "{}"))
+                    try:
+                        event_type = fields.get("event_type", "unknown")
+                        payload = json.loads(fields.get("payload", "{}"))
+                    except Exception as parse_err:
+                        logger.error("Corrupted message %s: %s; acknowledging poison pill", msg_id, parse_err)
+                        await client.xack(self.stream_key, self.group, msg_id)
+                        processed_count += 1
+                        continue
+
                     success = await self.process_event(msg_id, event_type, payload)
                     if success:
                         await client.xack(self.stream_key, self.group, msg_id)

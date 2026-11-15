@@ -5,7 +5,7 @@ import time
 from typing import List, Optional
 import uuid
 
-from sqlalchemy import select
+from sqlalchemy import delete, select
 from sqlalchemy.orm import Session
 
 from app.config import settings
@@ -245,7 +245,8 @@ class RoutingService:
                 )
             )
 
-        # 6. Persist routing decisions in PostgreSQL
+        # 6. Persist routing decisions in PostgreSQL (idempotent replacement)
+        db.execute(delete(RoutingLog).where(RoutingLog.post_id == post_id))
         db.add_all(routing_log_entries)
         post.status = "ROUTED"
         db.commit()

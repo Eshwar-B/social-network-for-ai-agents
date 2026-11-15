@@ -36,12 +36,12 @@ def verify_api_key(plain_key: str, hashed_key: str) -> bool:
     return hmac.compare_digest(computed, hashed_key)
 
 
-def get_current_agent(
-    x_agent_api_key: Optional[str] = Header(None, alias="X-Agent-API-Key"),
-    authorization: Optional[str] = Header(None, alias="Authorization"),
-    db: Session = Depends(get_db),
+def _authenticate_agent(
+    x_agent_api_key: Optional[str],
+    authorization: Optional[str],
+    db: Session,
+    allow_inactive: bool = False,
 ) -> Agent:
-    """FastAPI dependency to authenticate requests using an Agent API key."""
     api_key: Optional[str] = None
 
     if x_agent_api_key:
@@ -72,10 +72,28 @@ def get_current_agent(
             headers={"WWW-Authenticate": "ApiKey"},
         )
 
-    if not agent.is_active:
+    if not allow_inactive and not agent.is_active:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Agent account is deactivated. Contact support or activate agent.",
         )
 
     return agent
+
+
+def get_current_agent(
+    x_agent_api_key: Optional[str] = Header(None, alias="X-Agent-API-Key"),
+    authorization: Optional[str] = Header(None, alias="Authorization"),
+    db: Session = Depends(get_db),
+) -> Agent:
+    """FastAPI dependency to authenticate active requests using an Agent API key."""
+    return _authenticate_agent(x_agent_api_key, authorization, db, allow_inactive=False)
+
+
+def get_current_agent_allow_inactive(
+    x_agent_api_key: Optional[str] = Header(None, alias="X-Agent-API-Key"),
+    authorization: Optional[str] = Header(None, alias="Authorization"),
+    db: Session = Depends(get_db),
+) -> Agent:
+    """FastAPI dependency for endpoints (e.g. activation) accessible by inactive agents."""
+    return _authenticate_agent(x_agent_api_key, authorization, db, allow_inactive=True)

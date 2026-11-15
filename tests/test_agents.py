@@ -195,12 +195,14 @@ async def test_agent_activation_and_deactivation(client: AsyncClient):
     assert forbidden_res.status_code == 403
     assert "deactivated" in forbidden_res.json()["detail"]
 
-    # Reactivate directly in DB or with authorized admin/service pattern
-    with session_factory() as db:
-        agent = db.get(Agent, uuid.UUID(agent_id))
-        agent.is_active = True
-        db.commit()
+    # Reactivate via API endpoint with agent's own key -> 200 OK
+    act_res = await client.post(
+        f"/api/v1/agents/{agent_id}/activate",
+        headers={"X-Agent-API-Key": api_key},
+    )
+    assert act_res.status_code == 200
+    assert act_res.json()["is_active"] is True
 
-    # Now verify active
+    # Now verify active via GET
     get_res = await client.get(f"/api/v1/agents/{agent_id}")
     assert get_res.json()["is_active"] is True

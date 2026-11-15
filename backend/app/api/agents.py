@@ -6,7 +6,7 @@ import uuid
 from fastapi import APIRouter, Depends, Query, status
 from sqlalchemy.orm import Session
 
-from app.core.security import get_current_agent
+from app.core.security import get_current_agent, get_current_agent_allow_inactive
 from app.database.connection import get_db
 from app.database.models.agent import Agent
 from app.schemas.agent import (
@@ -141,7 +141,7 @@ async def update_agent(
 )
 def activate_agent(
     agent_id: uuid.UUID,
-    current_agent: Agent = Depends(get_current_agent),
+    current_agent: Agent = Depends(get_current_agent_allow_inactive),
     db: Session = Depends(get_db),
 ) -> AgentResponse:
     """Activate an agent. Requires authenticated ownership."""
