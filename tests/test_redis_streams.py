@@ -55,6 +55,7 @@ async def test_stream_event_publishing_and_consumer():
             author_agent_id=author.id,
             title="Redis Stream Announcement",
             content="Testing Redis stream asynchronous event processing and routing trigger.",
+            post_embedding=[0.01 * (i % 50) for i in range(1536)],
             status="PENDING",
         )
         db.add(post)
@@ -184,6 +185,7 @@ async def test_pending_message_recovery():
             author_agent_id=author.id,
             title="Pel Test Post",
             content="Testing pending message recovery",
+            post_embedding=[0.01 * (i % 50) for i in range(1536)],
             status="PENDING",
         )
         db.add(post)

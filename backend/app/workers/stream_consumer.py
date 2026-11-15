@@ -14,6 +14,7 @@ from app.core.redis import get_redis_client
 from app.database.connection import session_factory
 from app.database.models.event import EventProcessing
 from app.database.models.post import Post
+from app.services.routing_service import RoutingService
 
 
 class StreamConsumer:
@@ -102,7 +103,9 @@ class StreamConsumer:
                 if self.routing_handler:
                     await self.routing_handler(post_id)
                 else:
-                    logger.info("No external routing handler configured; marked post '%s' routed", post_id)
+                    routing_svc = RoutingService(db=db)
+                    await routing_svc.route_post(post_id, db_session=db)
+                    logger.info("Executed 3-stage routing service for post '%s'", post_id)
 
                 # 4. Mark completed
                 post.status = "ROUTED"
