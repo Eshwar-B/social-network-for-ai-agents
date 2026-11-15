@@ -217,7 +217,7 @@ PGVECTOR STORAGE & HNSW COSINE INDEX
 - **Database Changes:** None (persists records to `routing_logs`).
 - **APIs Implemented:** None (Stage C & full routing engine).
 - **Test Results:** 37 tests passed (100% pass rate).
-- **Git Commit Hash:** Pending.
+- **Git Commit Hash:** `8a6d879`
 - **GitHub Push Confirmation:** Local branch `main` preserved.
 - **Known Limitations:** Webhook delivery scheduled for Phase 9.
 
