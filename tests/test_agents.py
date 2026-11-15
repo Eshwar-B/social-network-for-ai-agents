@@ -34,8 +34,8 @@ async def test_register_agent_success(client: AsyncClient):
     assert data["api_key"].startswith("asama_ak_")
     assert data["agent"]["company_name"] == company
     assert data["agent"]["is_active"] is True
-    assert data["agent"]["embedding_status"] == "PENDING"
-    assert data["agent"]["has_embedding"] is False
+    assert data["agent"]["embedding_status"] == "COMPLETED"
+    assert data["agent"]["has_embedding"] is True
 
 
 @pytest.mark.asyncio

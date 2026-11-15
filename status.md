@@ -8,7 +8,7 @@ Problem: Problem 1
 
 Development Status: IN_PROGRESS
 
-Current Phase: Phase 3 – Embedding Generation Service
+Current Phase: Phase 4 – Post Creation and Management
 
 Last Updated: 2026-11-15
 
@@ -23,8 +23,8 @@ Git Repository: Local repository initialized (branch: main)
 | 0 | Project Initialization | COMPLETED |
 | 1 | Database Foundation | COMPLETED |
 | 2 | Agent Registration | COMPLETED |
-| 3 | Embedding Generation | IN_PROGRESS |
-| 4 | Post Management | NOT_STARTED |
+| 3 | Embedding Generation | COMPLETED |
+| 4 | Post Management | IN_PROGRESS |
 | 5 | Redis Event Processing | NOT_STARTED |
 | 6 | SQL Filtering | NOT_STARTED |
 | 7 | Vector Search | NOT_STARTED |
@@ -43,64 +43,54 @@ Git Repository: Local repository initialized (branch: main)
 
 ## Current Phase
 
-Phase 3 – Embedding Generation Service
+Phase 4 – Post Creation and Management
 
 Status: IN_PROGRESS
 
-### Completed Tasks (Phase 2)
+### Completed Tasks (Phase 3)
 
-- Implemented Pydantic agent schemas in `backend/app/schemas/agent.py` (`AgentCreate`, `AgentUpdate`, `AgentResponse`, `AgentRegistrationResponse`, `AgentListResponse`).
-- Implemented `AgentRepository` in `backend/app/repositories/agent_repository.py`.
-- Implemented `AgentService` in `backend/app/services/agent_service.py`.
-- Implemented authentication security foundations in `backend/app/core/security.py` with URL-safe secret tokens and HMAC-SHA256 hashed API keys.
-- Implemented Agent API endpoints in `backend/app/api/agents.py`:
-  - `POST /api/v1/agents/register` (returns 201 with generated API key)
-  - `GET /api/v1/agents` (paginated listing)
-  - `GET /api/v1/agents/{agent_id}`
-  - `PATCH /api/v1/agents/{agent_id}` (requires authenticated agent ownership)
-  - `POST /api/v1/agents/{agent_id}/activate`
-  - `POST /api/v1/agents/{agent_id}/deactivate`
-- Prevented agent impersonation: requests attempting to modify another agent's profile are rejected with 403 Forbidden.
-- Included `agents` router in main API router (`backend/app/api/router.py`).
-- Implemented and verified complete test suite in `tests/test_agents.py` (6 tests passed).
+- Implemented `BaseEmbeddingProvider` abstract interface in `backend/app/services/embedding_provider.py`.
+- Implemented `OpenAIEmbeddingProvider` targeting `text-embedding-3-small` with 1536 dimensions.
+- Implemented deterministic `MockEmbeddingProvider` for offline test suites, producing normalized 1536-dimensional unit vectors.
+- Implemented `EmbeddingService` in `backend/app/services/embedding_service.py` with dimension validation (1536-D), empty-text checks, exponential backoff retries, and persistence in `agents.interest_embedding`.
+- Integrated automated embedding generation during agent registration (`POST /api/v1/agents/register`).
+- Integrated dynamic embedding regeneration when agent manifesto is modified via `PATCH /api/v1/agents/{agent_id}`.
+- Added comprehensive unit and integration tests in `tests/test_embeddings.py` (6 tests passed).
+- Updated existing tests in `tests/test_agents.py` to assert `embedding_status == "COMPLETED"` and `has_embedding == True`.
 
-### Pending Tasks (Phase 3)
+### Pending Tasks (Phase 4)
 
-- Implement replaceable embedding provider abstraction in `backend/app/services/embedding_provider.py`.
-- Implement `OpenAIEmbeddingProvider` (`text-embedding-3-small`, 1536 dimensions).
-- Implement deterministic `MockEmbeddingProvider` for offline and automated testing.
-- Implement `EmbeddingService` in `backend/app/services/embedding_service.py` with input validation, dimension validation, and retry handling.
-- Hook embedding generation into agent registration and profile manifesto updates.
-- Update agent `interest_embedding` and transition `embedding_status` to `COMPLETED` (or `FAILED` on error).
-- Write and run unit and integration tests for embedding generation.
+- Define Pydantic post schemas in `backend/app/schemas/post.py` (`PostCreate`, `PostResponse`, `PostListResponse`, `CommentResponse`).
+- Implement `PostRepository` in `backend/app/repositories/post_repository.py`.
+- Implement `PostService` in `backend/app/services/post_service.py`:
+  - Validate publishing agent identity and active status.
+  - Generate post embedding from `title + "\n" + content` using `EmbeddingService`.
+  - Persist post in PostgreSQL (`posts.post_embedding`).
+  - Prepare event for Redis stream publishing (transactional outbox / post-commit event record).
+- Implement Post API router in `backend/app/api/posts.py`:
+  - `POST /api/v1/posts`
+  - `GET /api/v1/posts`
+  - `GET /api/v1/posts/{post_id}`
+  - `GET /api/v1/posts/{post_id}/comments`
+- Test post publishing, invalid publisher rejection, inactive publisher rejection, post embedding persistence, and retrieval.
 
-### Files Created (Phase 2)
+### Files Created (Phase 3)
 
-- `backend/app/schemas/__init__.py`
-- `backend/app/schemas/agent.py`
-- `backend/app/core/security.py`
-- `backend/app/repositories/__init__.py`
-- `backend/app/repositories/agent_repository.py`
-- `backend/app/services/__init__.py`
-- `backend/app/services/agent_service.py`
-- `backend/app/api/agents.py`
-- `tests/test_agents.py`
+- `backend/app/services/embedding_provider.py`
+- `backend/app/services/embedding_service.py`
+- `tests/test_embeddings.py`
 
 ### Tests
 
-- `tests/test_agents.py::test_register_agent_success` - PASSED
-- `tests/test_agents.py::test_register_duplicate_agent_fails` - PASSED
-- `tests/test_agents.py::test_register_agent_validation_errors` - PASSED
-- `tests/test_agents.py::test_agent_retrieval_and_listing` - PASSED
-- `tests/test_agents.py::test_agent_update_authentication_and_authorization` - PASSED
-- `tests/test_agents.py::test_agent_activation_and_deactivation` - PASSED
+- `tests/test_embeddings.py` (6 tests) - PASSED
+- `tests/test_agents.py` (6 tests) - PASSED
 - `tests/test_database.py` (4 tests) - PASSED
 - `tests/test_health.py` (3 tests) - PASSED
-- Total: 13 passed in 5.68s.
+- Total: 19 passed in 3.49s.
 
 ### Git Commit
 
-- Pending Phase 2 commit: `feat: implement agent registration and management APIs`
+- Pending Phase 3 commit: `feat: implement agent interest embedding generation`
 
 ### Git Push
 
@@ -108,11 +98,11 @@ Status: IN_PROGRESS
 
 ### Known Issues
 
-- None.
+- Real OpenAI API key not configured locally; deterministic `MockEmbeddingProvider` is used for test suites and offline verification.
 
 ### Next Action
 
-- Commit Phase 2, then proceed with Phase 3: Embedding Generation Service.
+- Commit Phase 3, then proceed with Phase 4: Post Creation and Management.
 
 ---
 
@@ -144,9 +134,20 @@ Status: IN_PROGRESS
 - **Completion Date:** 2026-11-15
 - **Implemented Features:** Agent registration, profile retrieval, updates, activation/deactivation, API key authentication, impersonation protection.
 - **Files Created:** Agent schemas, repository, service, API router, security, tests.
-- **Database Changes:** None (schema already established in Phase 1).
+- **Database Changes:** None.
 - **APIs Implemented:** `POST /api/v1/agents/register`, `GET /api/v1/agents`, `GET /api/v1/agents/{agent_id}`, `PATCH /api/v1/agents/{agent_id}`, `POST /api/v1/agents/{agent_id}/activate`, `POST /api/v1/agents/{agent_id}/deactivate`.
 - **Test Results:** 13 tests passed.
-- **Git Commit Hash:** Pending.
+- **Git Commit Hash:** `3ed3792`
 - **GitHub Push Confirmation:** Local branch `main`.
 - **Known Limitations:** None.
+
+### Phase 3 – Embedding Generation Service
+- **Completion Date:** 2026-11-15
+- **Implemented Features:** Pluggable embedding provider architecture (`OpenAIEmbeddingProvider`, `MockEmbeddingProvider`), 1536-dimensional L2 normalized vector generation, `EmbeddingService` with retry logic, automatic manifesto embedding generation and regeneration on profile update, persistence in pgvector.
+- **Files Created:** `embedding_provider.py`, `embedding_service.py`, `tests/test_embeddings.py`.
+- **Database Changes:** None.
+- **APIs Implemented:** Integrated into agent registration & update endpoints.
+- **Test Results:** 19 tests passed (100% pass rate).
+- **Git Commit Hash:** Pending.
+- **GitHub Push Confirmation:** Local branch `main`.
+- **Known Limitations:** OpenAI API key requires user configuration in `.env` for production use.

@@ -17,6 +17,7 @@ from app.schemas.agent import (
     AgentUpdate,
 )
 from app.services.agent_service import AgentService
+from app.services.embedding_service import EmbeddingService
 
 router = APIRouter(prefix="/agents", tags=["Agents"])
 
@@ -44,17 +45,22 @@ def _to_agent_response(agent: Agent) -> AgentResponse:
     status_code=status.HTTP_201_CREATED,
     summary="Register a new company AI agent",
 )
-def register_agent(
+async def register_agent(
     payload: AgentCreate,
     db: Session = Depends(get_db),
 ) -> AgentRegistrationResponse:
-    """Register a new enterprise company agent.
-
-    Returns the registered agent profile and an API key for authentication.
-    The API key is returned ONLY once at registration.
-    """
+    """Register a new enterprise company agent and generate interest embedding."""
     service = AgentService(db)
     agent, plain_api_key = service.register_agent(payload)
+
+    # Generate and store interest embedding
+    embedding_service = EmbeddingService(db=db)
+    try:
+        agent = await embedding_service.generate_and_save_agent_embedding(agent.id)
+    except Exception:
+        # Agent remains registered with embedding_status='FAILED'
+        pass
+
     return AgentRegistrationResponse(
         agent=_to_agent_response(agent),
         api_key=plain_api_key,
@@ -104,7 +110,7 @@ def get_agent(
     response_model=AgentResponse,
     summary="Update agent profile",
 )
-def update_agent(
+async def update_agent(
     agent_id: uuid.UUID,
     payload: AgentUpdate,
     current_agent: Agent = Depends(get_current_agent),
@@ -112,10 +118,19 @@ def update_agent(
 ) -> AgentResponse:
     """Update agent industry, webhook URL, or interest manifesto.
 
+    Regenerates interest embedding if manifesto was modified.
     Requires authentication as the agent being updated.
     """
     service = AgentService(db)
     updated = service.update_agent(agent_id, payload, current_agent)
+
+    if payload.interest_manifesto:
+        embedding_service = EmbeddingService(db=db)
+        try:
+            updated = await embedding_service.generate_and_save_agent_embedding(agent_id)
+        except Exception:
+            pass
+
     return _to_agent_response(updated)
 
 
