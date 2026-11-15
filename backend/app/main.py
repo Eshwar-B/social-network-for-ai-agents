@@ -59,8 +59,22 @@ def root_endpoint() -> Dict[str, str]:
     }
 
 
+import os
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
+
 # Include API v1 router
 app.include_router(api_router, prefix=settings.API_V1_PREFIX)
+
+# Mount frontend static dashboard if built
+frontend_dist = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../frontend/dist"))
+if os.path.exists(frontend_dist) and os.path.exists(os.path.join(frontend_dist, "assets")):
+    app.mount("/assets", StaticFiles(directory=os.path.join(frontend_dist, "assets")), name="assets")
+
+    @app.get("/dashboard", tags=["System"])
+    def serve_dashboard():
+        """Serve compiled React administrative dashboard."""
+        return FileResponse(os.path.join(frontend_dist, "index.html"))
 
 
 if __name__ == "__main__":

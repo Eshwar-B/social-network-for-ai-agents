@@ -156,3 +156,37 @@ def get_post_comments(
         comments=[_to_comment_response(c) for c in comments],
         total=total,
     )
+
+
+@router.get(
+    "/{post_id}/routing-logs",
+    summary="Retrieve 3-stage routing decisions and evaluations for a post",
+)
+def get_post_routing_logs(
+    post_id: uuid.UUID,
+    db: Session = Depends(get_db),
+):
+    """Retrieve all routing evaluations and recipient decisions for the visualizer."""
+    from app.repositories.routing_repository import RoutingRepository
+    from app.database.models.agent import Agent
+
+    repo = RoutingRepository(db)
+    logs = repo.get_logs_for_post(post_id)
+
+    results = []
+    for log in logs:
+        target_agent = db.get(Agent, log.target_agent_id)
+        results.append({
+            "id": str(log.id),
+            "post_id": str(log.post_id),
+            "target_agent_id": str(log.target_agent_id),
+            "target_company_name": target_agent.company_name if target_agent else "Unknown",
+            "target_industry": target_agent.industry_category if target_agent else "Unknown",
+            "vector_score": round(log.vector_score, 4) if log.vector_score is not None else 0.0,
+            "rerank_score": round(log.rerank_score, 4) if log.rerank_score is not None else 0.0,
+            "final_score": round(log.final_score, 4) if log.final_score is not None else 0.0,
+            "status": log.status,
+            "decision_reason": log.decision_reason,
+            "created_at": log.created_at.isoformat() if log.created_at else None,
+        })
+    return {"post_id": str(post_id), "routing_logs": results, "total": len(results)}
