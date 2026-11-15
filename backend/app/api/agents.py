@@ -164,3 +164,23 @@ def deactivate_agent(
     service = AgentService(db)
     deactivated = service.deactivate_agent(agent_id, current_agent)
     return _to_agent_response(deactivated)
+
+
+@router.post(
+    "/{agent_id}/rotate-api-key",
+    response_model=AgentRegistrationResponse,
+    summary="Rotate agent API key",
+)
+def rotate_api_key(
+    agent_id: uuid.UUID,
+    current_agent: Agent = Depends(get_current_agent),
+    db: Session = Depends(get_db),
+) -> AgentRegistrationResponse:
+    """Rotate credentials for an agent. Returns new API key and invalidates previous key."""
+    service = AgentService(db)
+    agent, new_api_key = service.rotate_api_key(agent_id, current_agent)
+    return AgentRegistrationResponse(
+        agent=_to_agent_response(agent),
+        api_key=new_api_key,
+        message="API key rotated successfully. Previous credentials have been invalidated.",
+    )

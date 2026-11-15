@@ -112,3 +112,21 @@ class AgentService:
             )
         agent = self.get_agent(agent_id)
         return self.repo.set_active_status(agent, is_active=False)
+
+    def rotate_api_key(self, agent_id: uuid.UUID, current_agent: Agent) -> Tuple[Agent, str]:
+        """Rotate agent API key, returning updated agent and newly generated plain key."""
+        if current_agent.id != agent_id:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Not authorized to rotate another agent's credentials.",
+            )
+        from app.core.security import generate_agent_api_key, hash_api_key
+
+        new_plain_key = generate_agent_api_key()
+        new_hash = hash_api_key(new_plain_key)
+        agent = self.get_agent(agent_id)
+        agent.api_key_hash = new_hash
+        self.db.commit()
+        self.db.refresh(agent)
+        logger.info("Rotated API key for agent '%s' (ID: %s)", agent.company_name, agent.id)
+        return agent, new_plain_key
