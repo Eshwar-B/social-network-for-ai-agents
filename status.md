@@ -8,7 +8,7 @@ Problem: Problem 1
 
 Development Status: IN_PROGRESS
 
-Current Phase: Phase 4 – Post Creation and Management
+Current Phase: Phase 5 – Redis Streams and Asynchronous Event Ingestion
 
 Last Updated: 2026-11-15
 
@@ -24,8 +24,8 @@ Git Repository: Local repository initialized (branch: main)
 | 1 | Database Foundation | COMPLETED |
 | 2 | Agent Registration | COMPLETED |
 | 3 | Embedding Generation | COMPLETED |
-| 4 | Post Management | IN_PROGRESS |
-| 5 | Redis Event Processing | NOT_STARTED |
+| 4 | Post Management | COMPLETED |
+| 5 | Redis Event Processing | IN_PROGRESS |
 | 6 | SQL Filtering | NOT_STARTED |
 | 7 | Vector Search | NOT_STARTED |
 | 8 | Reranking | NOT_STARTED |
@@ -43,54 +43,57 @@ Git Repository: Local repository initialized (branch: main)
 
 ## Current Phase
 
-Phase 4 – Post Creation and Management
+Phase 5 – Redis Streams and Asynchronous Event Ingestion
 
 Status: IN_PROGRESS
 
-### Completed Tasks (Phase 3)
+### Completed Tasks (Phase 4)
 
-- Implemented `BaseEmbeddingProvider` abstract interface in `backend/app/services/embedding_provider.py`.
-- Implemented `OpenAIEmbeddingProvider` targeting `text-embedding-3-small` with 1536 dimensions.
-- Implemented deterministic `MockEmbeddingProvider` for offline test suites, producing normalized 1536-dimensional unit vectors.
-- Implemented `EmbeddingService` in `backend/app/services/embedding_service.py` with dimension validation (1536-D), empty-text checks, exponential backoff retries, and persistence in `agents.interest_embedding`.
-- Integrated automated embedding generation during agent registration (`POST /api/v1/agents/register`).
-- Integrated dynamic embedding regeneration when agent manifesto is modified via `PATCH /api/v1/agents/{agent_id}`.
-- Added comprehensive unit and integration tests in `tests/test_embeddings.py` (6 tests passed).
-- Updated existing tests in `tests/test_agents.py` to assert `embedding_status == "COMPLETED"` and `has_embedding == True`.
+- Implemented Pydantic schemas in `backend/app/schemas/post.py` (`PostCreate`, `PostResponse`, `PostListResponse`, `CommentResponse`, `CommentListResponse`).
+- Implemented `PostRepository` in `backend/app/repositories/post_repository.py`.
+- Implemented `PostService` in `backend/app/services/post_service.py`:
+  - Verified authenticated publisher identity and active status.
+  - Generated post dense vector embedding from `Title + "\n\n" + Content` using `EmbeddingService`.
+  - Stored post in PostgreSQL with `posts.post_embedding` vector (1536 dimensions).
+  - Implemented transactional outbox pattern: persisted event record in `event_processing` table with payload `{"event_id", "event_type": "post.published", "post_id", "author_agent_id"}`.
+- Implemented Post API router in `backend/app/api/posts.py`:
+  - `POST /api/v1/posts` (publishes announcement, returns 201)
+  - `GET /api/v1/posts` (paginated list with author and status filtering)
+  - `GET /api/v1/posts/{post_id}` (detailed post)
+  - `GET /api/v1/posts/{post_id}/comments` (comments listing)
+- Included `posts` router in main API router (`backend/app/api/router.py`).
+- Implemented and verified complete test suite in `tests/test_posts.py` (5 tests passed).
 
-### Pending Tasks (Phase 4)
+### Pending Tasks (Phase 5)
 
-- Define Pydantic post schemas in `backend/app/schemas/post.py` (`PostCreate`, `PostResponse`, `PostListResponse`, `CommentResponse`).
-- Implement `PostRepository` in `backend/app/repositories/post_repository.py`.
-- Implement `PostService` in `backend/app/services/post_service.py`:
-  - Validate publishing agent identity and active status.
-  - Generate post embedding from `title + "\n" + content` using `EmbeddingService`.
-  - Persist post in PostgreSQL (`posts.post_embedding`).
-  - Prepare event for Redis stream publishing (transactional outbox / post-commit event record).
-- Implement Post API router in `backend/app/api/posts.py`:
-  - `POST /api/v1/posts`
-  - `GET /api/v1/posts`
-  - `GET /api/v1/posts/{post_id}`
-  - `GET /api/v1/posts/{post_id}/comments`
-- Test post publishing, invalid publisher rejection, inactive publisher rejection, post embedding persistence, and retrieval.
+- Configure async Redis client connection in `backend/app/core/redis.py`.
+- Implement Redis Stream event publisher in `backend/app/events/publisher.py`.
+- Implement Redis Stream consumer worker with consumer groups in `backend/app/workers/stream_consumer.py`.
+- Implement idempotency and pending event recovery (handling restarts and PEL claims).
+- Hook PostService to publish `post.published` events to Redis Stream (`asama:stream:posts`).
+- Ensure API returns immediately without waiting for routing or background workers.
+- Test Redis connectivity, event publication, consumer group processing, worker restart recovery, and idempotency.
 
-### Files Created (Phase 3)
+### Files Created (Phase 4)
 
-- `backend/app/services/embedding_provider.py`
-- `backend/app/services/embedding_service.py`
-- `tests/test_embeddings.py`
+- `backend/app/schemas/post.py`
+- `backend/app/repositories/post_repository.py`
+- `backend/app/services/post_service.py`
+- `backend/app/api/posts.py`
+- `tests/test_posts.py`
 
 ### Tests
 
+- `tests/test_posts.py` (5 tests) - PASSED
 - `tests/test_embeddings.py` (6 tests) - PASSED
 - `tests/test_agents.py` (6 tests) - PASSED
 - `tests/test_database.py` (4 tests) - PASSED
 - `tests/test_health.py` (3 tests) - PASSED
-- Total: 19 passed in 3.49s.
+- Total: 24 passed in 4.12s.
 
 ### Git Commit
 
-- Pending Phase 3 commit: `feat: implement agent interest embedding generation`
+- Pending Phase 4 commit: `feat: implement post creation and management APIs`
 
 ### Git Push
 
@@ -98,11 +101,11 @@ Status: IN_PROGRESS
 
 ### Known Issues
 
-- Real OpenAI API key not configured locally; deterministic `MockEmbeddingProvider` is used for test suites and offline verification.
+- None.
 
 ### Next Action
 
-- Commit Phase 3, then proceed with Phase 4: Post Creation and Management.
+- Commit Phase 4, then proceed with Phase 5: Redis Streams and Asynchronous Event Ingestion.
 
 ---
 
@@ -148,6 +151,17 @@ Status: IN_PROGRESS
 - **Database Changes:** None.
 - **APIs Implemented:** Integrated into agent registration & update endpoints.
 - **Test Results:** 19 tests passed (100% pass rate).
-- **Git Commit Hash:** Pending.
+- **Git Commit Hash:** `18bb1ed`
 - **GitHub Push Confirmation:** Local branch `main`.
 - **Known Limitations:** OpenAI API key requires user configuration in `.env` for production use.
+
+### Phase 4 – Post Creation and Management
+- **Completion Date:** 2026-11-15
+- **Implemented Features:** Post creation API, author authentication & status validation, post embedding generation, PostgreSQL persistence, transactional outbox event staging, post and comment retrieval APIs.
+- **Files Created:** `post.py` (schemas), `post_repository.py`, `post_service.py`, `posts.py` (API router), `tests/test_posts.py`.
+- **Database Changes:** None.
+- **APIs Implemented:** `POST /api/v1/posts`, `GET /api/v1/posts`, `GET /api/v1/posts/{post_id}`, `GET /api/v1/posts/{post_id}/comments`.
+- **Test Results:** 24 tests passed (100% pass rate).
+- **Git Commit Hash:** Pending.
+- **GitHub Push Confirmation:** Local branch `main`.
+- **Known Limitations:** Event publishing to Redis Streams scheduled for Phase 5.
