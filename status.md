@@ -8,7 +8,7 @@ Problem: Problem 1
 
 Development Status: IN_PROGRESS
 
-Current Phase: Phase 7 – Multi-Stage Routing Engine: Stage B (Vector Search)
+Current Phase: Phase 8 – Multi-Stage Routing Engine: Stage C (Cross-Encoder Reranking)
 
 Last Updated: 2026-11-15
 
@@ -27,8 +27,8 @@ Git Repository: Local repository initialized (branch: main)
 | 4 | Post Management | COMPLETED |
 | 5 | Redis Event Processing | COMPLETED |
 | 6 | SQL Filtering | COMPLETED |
-| 7 | Vector Search | IN_PROGRESS |
-| 8 | Reranking | NOT_STARTED |
+| 7 | Vector Search | COMPLETED |
+| 8 | Reranking | IN_PROGRESS |
 | 9 | Webhook Delivery | NOT_STARTED |
 | 10 | Autonomous Agents | NOT_STARTED |
 | 11 | Comments and Interactions | NOT_STARTED |
@@ -43,42 +43,44 @@ Git Repository: Local repository initialized (branch: main)
 
 ## Current Phase
 
-Phase 7 – Multi-Stage Routing Engine: Stage B (pgvector Semantic Search)
+Phase 8 – Multi-Stage Routing Engine: Stage C (Cross-Encoder Reranking & Routing Orchestration)
 
 Status: IN_PROGRESS
 
-### Completed Tasks (Phase 6)
+### Completed Tasks (Phase 7)
 
-- Created routing module in `backend/app/routing/`.
-- Implemented Stage A SQL eligibility filter in `backend/app/routing/sql_filter.py`:
-  - Dynamically retrieves eligible agents using indexed PostgreSQL queries.
-  - Excludes author agent (`id != author_agent_id`).
-  - Excludes inactive agents (`is_active == True`).
-  - Excludes agents with missing or incomplete vector embeddings (`embedding_status == 'COMPLETED'`, `interest_embedding IS NOT NULL`).
-  - Excludes explicitly blocked agents configured in `agent_blocklists`.
-  - Excludes explicitly blocked industry categories configured in `agent_blocklists` or supplied as runtime exclusion parameters.
-  - Records detailed audit statistics (`SQLFilterStats`): total agents, eligible count, inactive count, missing embedding count, blocked agents count, blocked industries count, execution time in milliseconds.
-- Created data transfer classes `CandidateAgent`, `SQLFilterStats`, and `SQLFilterResult`.
-- Tested all exclusion rules and runtime filters in `tests/test_sql_filter.py` (2 tests passed).
+- Implemented Stage B vector search in `backend/app/routing/vector_search.py`.
+- Computed cosine similarity via pgvector operator `(1.0 - interest_embedding.cosine_distance(post_vector))`.
+- Integrated Stage A candidate scope (`eligible_agent_ids`) and author blocklists into retrieval query.
+- Ordered candidates by similarity descending, capping results at configurable Top K (default K=50).
+- Created `ScoredCandidate`, `VectorSearchStats`, and `VectorSearchResult` data structures.
+- Implemented and verified test suite in `tests/test_vector_search.py` (3 tests passed).
 
-### Pending Tasks (Phase 7)
+### Pending Tasks (Phase 8)
 
-- Implement Stage B pgvector semantic search in `backend/app/routing/vector_search.py`.
-- Calculate cosine similarity against post embedding using pgvector's cosine distance operator (`1.0 - cosine_distance`).
-- Query eligible agents retrieved from Stage A (or combine Stage A SQL filter directly into the vector query).
-- Retrieve the Top K (default K=50) candidates ranked in descending order of similarity.
-- Return structured `VectorSearchResult` with candidate metadata and vector similarity scores.
-- Benchmark and verify query execution plan and performance.
-- Write and run unit and integration tests for pgvector semantic search.
+- Implement reranker provider interface and implementations in `backend/app/routing/reranker.py`:
+  - `BaseReranker` interface.
+  - `BGERerankerProvider` / Fast LLM judge / calibrated scoring provider.
+  - `MockRerankerProvider` producing deterministic, calibrated relevance scores in [0.0, 1.0] for testing.
+- Implement routing service orchestration in `backend/app/services/routing_service.py`:
+  - Fetch post and embedding from PostgreSQL.
+  - Execute Stage A SQL metadata filter.
+  - Execute Stage B pgvector semantic search (Top 50).
+  - Execute Stage C cross-encoder reranking on top candidates with Title, Content, Company Name, Industry, and Manifesto.
+  - Apply threshold: strictly enforce `score >= 0.75`.
+  - Apply maximum recipient cap: strictly limit to at most `N <= 5` agents.
+  - Record decisions in `routing_logs` table (persisting scores, qualification status, and rejection reasons).
+- Connect `RoutingService` to `StreamConsumer` in `backend/app/workers/stream_consumer.py`.
+- Conduct integrated end-to-end multi-agent test: register at least 5 companies (Swiggy, PhonePe, Paytm, Amazon, Bajaj Auto), publish post, process stream event, and verify 3-stage routing decisions.
 
-### Files Created (Phase 6)
+### Files Created (Phase 7)
 
-- `backend/app/routing/__init__.py`
-- `backend/app/routing/sql_filter.py`
-- `tests/test_sql_filter.py`
+- `backend/app/routing/vector_search.py`
+- `tests/test_vector_search.py`
 
 ### Tests
 
+- `tests/test_vector_search.py` (3 tests) - PASSED
 - `tests/test_sql_filter.py` (2 tests) - PASSED
 - `tests/test_redis_streams.py` (5 tests) - PASSED
 - `tests/test_posts.py` (5 tests) - PASSED
@@ -86,11 +88,11 @@ Status: IN_PROGRESS
 - `tests/test_agents.py` (6 tests) - PASSED
 - `tests/test_database.py` (4 tests) - PASSED
 - `tests/test_health.py` (3 tests) - PASSED
-- Total: 31 passed in 4.77s.
+- Total: 34 passed in 4.94s.
 
 ### Git Commit
 
-- Pending Phase 6 commit: `feat: implement SQL eligibility filtering for agent routing`
+- Pending Phase 7 commit: `feat: implement pgvector semantic agent search`
 
 ### Git Push
 
@@ -102,7 +104,7 @@ Status: IN_PROGRESS
 
 ### Next Action
 
-- Commit Phase 6, then proceed with Phase 7: pgvector Semantic Search.
+- Commit Phase 7, then proceed with Phase 8: Cross-Encoder Reranking and Routing Orchestration.
 
 ---
 
@@ -168,7 +170,7 @@ Status: IN_PROGRESS
 - **Implemented Features:** Redis stream event publisher, consumer group worker with authoritative DB lookups, idempotency check, message acknowledgement, pending message (PEL) recovery, decoupled non-blocking post publication API.
 - **Files Created:** `redis.py`, `publisher.py`, `stream_consumer.py`, `tests/test_redis_streams.py`.
 - **Database Changes:** None.
-- **APIs Implemented:** None (asynchronous streaming layer).
+- **APIs Implemented:** None.
 - **Test Results:** 29 tests passed (100% pass rate).
 - **Git Commit Hash:** `c7b2122`
 - **GitHub Push Confirmation:** Local branch `main`.
@@ -179,8 +181,19 @@ Status: IN_PROGRESS
 - **Implemented Features:** SQL-based metadata filtering for candidate agent eligibility (excluding publisher, inactive agents, missing embeddings, blocked agents, and excluded industries), audit metrics and latency measurement.
 - **Files Created:** `sql_filter.py`, `tests/test_sql_filter.py`.
 - **Database Changes:** None.
-- **APIs Implemented:** None (internal routing engine Stage A).
+- **APIs Implemented:** None.
 - **Test Results:** 31 tests passed (100% pass rate).
+- **Git Commit Hash:** `66d9c9c`
+- **GitHub Push Confirmation:** Local branch `main`.
+- **Known Limitations:** None.
+
+### Phase 7 – Multi-Stage Routing Engine: Stage B (Vector Search)
+- **Completion Date:** 2026-11-15
+- **Implemented Features:** pgvector dense vector semantic retrieval with cosine similarity `(1.0 - cosine_distance)`, HNSW index integration, candidate restriction to eligible agents, Top K ordering (K=50).
+- **Files Created:** `vector_search.py`, `tests/test_vector_search.py`.
+- **Database Changes:** None.
+- **APIs Implemented:** None.
+- **Test Results:** 34 tests passed (100% pass rate).
 - **Git Commit Hash:** Pending.
 - **GitHub Push Confirmation:** Local branch `main`.
 - **Known Limitations:** None.
