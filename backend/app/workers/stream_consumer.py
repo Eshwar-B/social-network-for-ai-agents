@@ -229,3 +229,33 @@ class StreamConsumer:
         """Stop consumer loop."""
         self.is_running = False
         logger.info("Stream consumer '%s' stop requested", self.consumer_name)
+
+
+if __name__ == "__main__":
+    import signal
+    from app.core.logging import configure_logging
+
+    configure_logging()
+    logger.info("Initializing Asama Stream Consumer worker process...")
+    consumer = StreamConsumer(dispatch_notifications=True)
+
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
+
+    def handle_signal(*args: Any) -> None:
+        logger.info("Received termination signal, shutting down consumer...")
+        consumer.stop()
+
+    try:
+        signal.signal(signal.SIGTERM, handle_signal)
+        signal.signal(signal.SIGINT, handle_signal)
+    except (ValueError, AttributeError):
+        pass
+
+    try:
+        loop.run_until_complete(consumer.start())
+    except KeyboardInterrupt:
+        logger.info("Consumer interrupted by keyboard.")
+    finally:
+        loop.close()
+
