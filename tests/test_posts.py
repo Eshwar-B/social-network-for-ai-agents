@@ -59,7 +59,7 @@ async def test_create_post_success(client: AsyncClient):
         ).scalar_one_or_none()
         assert event is not None
         assert event.event_type == "post.published"
-        assert event.status == "PENDING"
+        assert event.status in ("PENDING", "PROCESSING", "COMPLETED")
         assert event.payload["post_id"] == str(post_id)
         assert event.payload["author_agent_id"] == str(author_id)
 

@@ -20,6 +20,11 @@ export default function App() {
   const [loading, setLoading] = useState(false);
   const [notification, setNotification] = useState(null);
 
+  // Temporary displayed API key state (clears on refresh, close, or tab navigation)
+  const [registeredKeyData, setRegisteredKeyData] = useState(null);
+  const [copiedKey, setCopiedKey] = useState(false);
+  const [showApiKeyInput, setShowApiKeyInput] = useState(false);
+
   // Forms state
   const [regForm, setRegForm] = useState({
     company_name: '',
@@ -74,11 +79,35 @@ export default function App() {
     }
   }, [selectedPostId]);
 
+  const handleTabChange = (newTab) => {
+    if (newTab !== activeTab) {
+      // Ephemeral API key display resets when user navigates away from the current view
+      setRegisteredKeyData(null);
+      setCopiedKey(false);
+      setActiveTab(newTab);
+    }
+  };
+
+  const handleCopyKey = () => {
+    if (registeredKeyData?.apiKey) {
+      navigator.clipboard.writeText(registeredKeyData.apiKey);
+      setCopiedKey(true);
+      setTimeout(() => setCopiedKey(false), 3000);
+    }
+  };
+
   const handleRegister = async (e) => {
     e.preventDefault();
     try {
       const res = await registerAgent(regForm);
-      showNotification(`Agent '${res.agent.company_name}' registered! API Key: ${res.api_key}`);
+      // Persist the plaintext API key in component memory until screen refresh/close/navigate
+      setRegisteredKeyData({
+        company_name: res.agent.company_name,
+        apiKey: res.api_key,
+        registeredAt: new Date().toLocaleTimeString(),
+      });
+      setCopiedKey(false);
+      showNotification(`Agent '${res.agent.company_name}' registered successfully! Copy your API key below.`);
       setRegForm({
         company_name: '',
         industry_category: 'Fintech & Payments',
@@ -135,7 +164,7 @@ export default function App() {
             ].map((tab) => (
               <button
                 key={tab.id}
-                onClick={() => setActiveTab(tab.id)}
+                onClick={() => handleTabChange(tab.id)}
                 className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
                   activeTab === tab.id
                     ? 'bg-emerald-500 text-slate-950 font-bold'
@@ -171,6 +200,80 @@ export default function App() {
 
       {/* Main Container */}
       <main className="flex-1 max-w-7xl mx-auto w-full p-4 sm:p-6 space-y-6">
+        {/* Persistent Agent API Key Display (Remains visible until refreshed, closed, or navigated away) */}
+        {registeredKeyData && (
+          <div className="relative overflow-hidden rounded-2xl border-2 border-amber-500/80 bg-gradient-to-r from-amber-950/80 via-slate-900 to-amber-950/80 p-5 sm:p-6 shadow-2xl shadow-amber-950/60 backdrop-blur animate-in fade-in slide-in-from-top-4 duration-300">
+            <div className="space-y-4">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-amber-500/30 pb-3">
+                <div className="flex items-center space-x-2.5">
+                  <span className="flex h-8 w-8 items-center justify-center rounded-full bg-amber-500/20 text-amber-400 font-bold text-lg border border-amber-500/40">
+                    ⚠️
+                  </span>
+                  <div>
+                    <h2 className="text-base sm:text-lg font-black tracking-tight text-amber-300 uppercase">
+                      New Agent API Key Generated
+                    </h2>
+                    <span className="text-xs text-slate-400">
+                      Company: <strong className="text-emerald-400 font-bold">{registeredKeyData.company_name}</strong> • Generated at {registeredKeyData.registeredAt}
+                    </span>
+                  </div>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <span className="text-xs font-mono px-2 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-500/30">
+                    EPHEMERAL DISPLAY
+                  </span>
+                </div>
+              </div>
+
+              {/* High-visibility Warning Notice */}
+              <div className="rounded-xl bg-red-950/50 border border-red-500/50 p-4 text-red-200 text-xs sm:text-sm font-semibold flex items-start space-x-3 shadow-inner">
+                <span className="text-2xl leading-none shrink-0">🛑</span>
+                <div className="space-y-1">
+                  <div className="text-red-300 font-black tracking-wide uppercase text-xs sm:text-sm">
+                    CRITICAL WARNING: SAVE YOUR API KEY NOW!
+                  </div>
+                  <div className="text-slate-200 font-normal leading-relaxed">
+                    If this screen is <strong>refreshed, closed, or navigated away</strong>, this key <span className="underline decoration-red-400 font-bold text-red-300">cannot be read or recovered again</span>. Asama.ai uses irreversible one-way SHA-256 hashing in the database, so the server cannot view or restore your plaintext key.
+                  </div>
+                </div>
+              </div>
+
+              {/* API Key Code Box with 1-Click Copy */}
+              <div className="rounded-xl bg-slate-950 border border-amber-500/40 p-4 flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3 shadow-md">
+                <div className="flex items-center space-x-2.5 overflow-x-auto py-1 flex-1">
+                  <span className="text-xs font-mono uppercase text-slate-500 font-bold shrink-0">API KEY:</span>
+                  <code className="text-emerald-400 font-mono text-sm sm:text-base font-bold break-all select-all tracking-wider bg-slate-900 px-2 py-1 rounded border border-slate-800">
+                    {registeredKeyData.apiKey}
+                  </code>
+                </div>
+                <div className="flex items-center space-x-2 shrink-0">
+                  <button
+                    type="button"
+                    onClick={handleCopyKey}
+                    className={`px-4 py-2.5 rounded-lg text-xs font-bold font-mono transition-all flex items-center space-x-1.5 shadow ${
+                      copiedKey
+                        ? 'bg-emerald-500 text-slate-950 shadow-emerald-500/30'
+                        : 'bg-amber-500 hover:bg-amber-400 text-slate-950 hover:shadow-amber-500/30'
+                    }`}
+                  >
+                    <span>{copiedKey ? '✓ COPIED TO CLIPBOARD!' : '📋 COPY KEY'}</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setPostForm((prev) => ({ ...prev, apiKey: registeredKeyData.apiKey }));
+                      setActiveTab('publish');
+                    }}
+                    className="px-4 py-2.5 rounded-lg text-xs font-bold font-mono bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition-colors"
+                    title="Pre-fill this key into the Publish Post form"
+                  >
+                    Use in Publish →
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
         {/* Tab 1: Overview */}
         {activeTab === 'overview' && (
           <div className="space-y-6">
@@ -350,7 +453,7 @@ export default function App() {
                     <button
                       onClick={() => {
                         setSelectedPostId(post.id);
-                        setActiveTab('routing');
+                        handleTabChange('routing');
                       }}
                       className="text-xs px-2.5 py-1 rounded bg-teal-500/20 text-teal-300 hover:bg-teal-500/30 font-mono"
                     >
@@ -400,9 +503,18 @@ export default function App() {
             </div>
             <form onSubmit={handleCreatePost} className="space-y-4">
               <div>
-                <label className="block text-xs font-mono text-slate-400 mb-1">Agent API Key (X-Agent-API-Key)</label>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="block text-xs font-mono text-slate-400">Agent API Key (X-Agent-API-Key)</label>
+                  <button
+                    type="button"
+                    onClick={() => setShowApiKeyInput(!showApiKeyInput)}
+                    className="text-xs text-slate-500 hover:text-slate-300 font-mono transition-colors"
+                  >
+                    {showApiKeyInput ? 'Hide Key' : 'Show Key'}
+                  </button>
+                </div>
                 <input
-                  type="password"
+                  type={showApiKeyInput ? 'text' : 'password'}
                   required
                   value={postForm.apiKey}
                   onChange={(e) => setPostForm({ ...postForm, apiKey: e.target.value })}
